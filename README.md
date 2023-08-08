@@ -65,7 +65,7 @@ The result of the above query is
 }
 ```
 
-Where the `fieldForProduct` is null even on `Product`
+Where the `fieldForProduct` is null on `Product` fields
 
 Using the following versions of `@graphql/stitch` and `@graphql-tools/schema` makes populates the `fieldForProduct` with `lala` as expected
 
