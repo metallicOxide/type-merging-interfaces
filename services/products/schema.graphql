@@ -1,0 +1,16 @@
+interface ProductOffering {
+  id: ID!
+  name: String!
+  price: Float!
+}
+
+type Product implements ProductOffering {
+  id: ID!
+  name: String!
+  price: Float!
+  fieldForProduct: String
+}
+
+type Query {
+  products(ids: [ID!]!): [ProductOffering]!
+}
