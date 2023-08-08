@@ -1,20 +1,10 @@
-# Cross-service interfaces
+# Why
 
-**Watch the [chapter video](https://www.youtube.com/watch?v=wPB5oI_Tjik)**
-
-[![Cross-service interfaces](../images/video-player.png)](https://www.youtube.com/watch?v=wPB5oI_Tjik)
-
-This example explores setting up a GraphQL interface that spans across service boundaries, as described in the [merged interfaces documentation](https://www.graphql-tools.com/docs/stitch-type-merging#merged-interfaces). This is an easily overlooked feature made possible by the flexibility of type merging.
-
-**This example demonstrates:**
-
-- Distributing a GraphQL interface across services.
+This repo is to highlight a potential issue on `graphql-tools/stitch` where inline fragments are not getting resolved in the subschema.
 
 ## Setup
 
 ```shell
-cd cross-service-interfaces
-
 yarn install
 yarn start
 ```
@@ -30,85 +20,56 @@ For simplicity, all subservices in this example are run locally by the gateway s
 Visit the [stitched gateway](http://localhost:4000/graphql) and try running the following query:
 
 ```graphql
-query {
+query test {
   storefront(id: "1") {
-    id
     name
+    __typename
     productOfferings {
+      name
       __typename
-      id
-      name
-      price
-      ...on ProductDeal {
-        products {
-          name
-          price
-        }
-      }
-    }
-  }
-}
-```
-
-If you study the results here, `Storefront.productOfferings` field returns the `ProductOffering` interface:
-
-```graphql
-# Products schema
-interface ProductOffering {
-  id: ID!
-  name: String!
-  price: Float!
-}
-```
-
-This interface is implemented by two types:
-
-- `Product`: a basic product record from the Products service.
-- `ProductDeal`: a wrapper for a set of products given a special price, managed in the Storefronts service.
-
-The oddity here is that the Storefronts service knows `Product` only with an `id` field, therefore Storefronts is not able to implement the full interface, it may only implement a subset of it:
-
-```graphql
-# Storefronts schema
-interface ProductOffering {
-  id: ID!
-}
-```
-
-This is where the flexibility of type merging really shines. By virtue of the merge, `ProductDeal` will adopt the full `ProductOffering` interface in the combined gateway schema.
-
-However, that means the gateway schema provides an interface of fields for a type that the underlying subservice does _not_ provide. This difference in interface fields is automatically translated using typed fragments. For example, try the following query:
-
-```graphql
-query {
-  storefront(id: "1") {
-    productOfferings {
-      id
-      name
-      price
-    }
-  }
-}
-```
-
-The above requests the full `ProductOffering` interface from the gateway schema. Comparing this to the query delegated to the Storefronts subservice, you'll see that the interface selections have been expanded into typed fragments that are compatible with the Storefronts schema:
-
-```graphql
-query ($graphqlTools0__v0_id: ID!) {
-  graphqlTools0_storefront: storefront(id: $graphqlTools0__v0_id) {
-    productOfferings {
-      id
       ... on Product {
         __typename
-        id
+        fieldForProduct
       }
-      ... on ProductDeal {
-        __typename
-        name
-        price
-      }
-      __typename
     }
   }
 }
+```
+
+The result of the above query is
+
+```
+{
+  "data": {
+    "storefront": {
+      "name": "eShoppe",
+      "__typename": "Storefront",
+      "productOfferings": [
+        {
+          "name": "iPhone",
+          "__typename": "Product",
+          "fieldForProduct": null
+        },
+        {
+          "name": "iPhone + Survival Guide",
+          "__typename": "ProductDeal"
+        },
+        {
+          "name": "Apple Watch",
+          "__typename": "Product",
+          "fieldForProduct": null
+        }
+      ]
+    }
+  }
+}
+```
+
+Where the `fieldForProduct` is null even on `Product`
+
+Using the following versions of `@graphql/stitch` and `@graphql-tools/schema` makes populates the `fieldForProduct` with `lala` as expected
+
+```
+    "@graphql-tools/schema": "^7.0.0",
+    "@graphql-tools/stitch": "^7.1.0",
 ```
